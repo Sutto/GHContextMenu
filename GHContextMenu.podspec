@@ -18,7 +18,7 @@ Pod::Spec.new do |s|
 
   s.author       = { "Tapasya" => "tapasyakhs@gmail.com" }
 
-  s.platform     = :ios
+  s.platform     = :ios, "7.0"
   s.source       = { :git => "https://github.com/GnosisHub/GHContextMenu.git", :commit => "a6e8f67d4a2206bfb9ad77814d2b90d2593b6f57" }
 
   s.source_files  = 'GHContextMenu/GHContextMenuView.{h,m}'
