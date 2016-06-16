@@ -80,19 +80,19 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
 
         displayLink = [CADisplayLink displayLinkWithTarget:self
                                                   selector:@selector(highlightMenuItemForPoint)];
-        
+
         [displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-        
+
         _menuItems = [NSMutableArray array];
         _titleItems = [NSMutableArray array];
         _titles = [NSMutableArray array];
         _itemLocations = [NSMutableArray array];
         _arcAngle = M_PI_2;
         _radius = 90;
-        
+
         self.itemBGColor = (id)[UIColor colorWithWhite:0.4 alpha:0.5].CGColor;
         self.itemBGHighlightedColor = (id)[UIColor redColor].CGColor;
-        
+
     }
     return self;
 }
@@ -146,7 +146,7 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
 // Split this out of the longPressDetected so that we can reuse it with touchesBegan (above)
 -(void)dismissWithSelectedIndexForMenuAtPoint:(CGPoint)point
 {
-    
+
     if(self.delegate && [self.delegate respondsToSelector:@selector(menuView:didSelectItemAtIndex:forMenuAtPoint:)] && self.prevIndex >= 0){
         [self.delegate menuView:self didSelectItemAtIndex:self.prevIndex forMenuAtPoint:point];
         self.prevIndex = -1;
@@ -158,17 +158,17 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
 - (void) longPressDetected:(UIGestureRecognizer*) gestureRecognizer
 {
     if (gestureRecognizer.state == UIGestureRecognizerStateBegan) {
-        
+
         // Don't start when we have zero items.
         if(self.menuItems.count == 0) {
             return;
         }
-        
-        
+
+
         self.prevIndex = -1;
-        
+
         CGPoint pointInView;
-        
+
         // If the menu should be anchored to the center of the view, do so
         if (self.menuAnchor == GHContextMenuAnchorContainingView) {
             pointInView = gestureRecognizer.view.center;
@@ -176,11 +176,11 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
             // Otherwise anchor it to the touch by default
             pointInView = [gestureRecognizer locationInView:gestureRecognizer.view];
         }
-        
+
         if (self.dataSource != nil && [self.dataSource respondsToSelector:@selector(menuView:shouldShowMenuAtPoint:)] && ![self.dataSource menuView:self shouldShowMenuAtPoint:pointInView]){
             return;
         }
-        
+
         [[UIApplication sharedApplication].keyWindow addSubview:self];
         if (self.menuAnchor == GHContextMenuAnchorContainingView) {
             self.longPressLocation = CGPointMake(gestureRecognizer.view.frame.origin.x + (gestureRecognizer.view.frame.size.width / 2), gestureRecognizer.view.frame.origin.y + gestureRecognizer.view.layer.borderWidth);
@@ -189,14 +189,14 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
         }
         [self showMenu];
     }
-    
+
     if (gestureRecognizer.state == UIGestureRecognizerStateChanged) {
         if (self.isShowing && (self.menuActionType == GHContextMenuActionTypePan || self.menuActionType == GHContextmenuActionTypePanAndTap)) {
             self.isPanning = YES;
             self.currentLocation =  [gestureRecognizer locationInView:self];
         }
     }
-    
+
     // Only trigger if we're using the GHContextMenuActionTypePan (default)
     if((gestureRecognizer.state == UIGestureRecognizerStateEnded && self.menuActionType == GHContextMenuActionTypePan) || (gestureRecognizer.state == UIGestureRecognizerStateEnded && self.menuActionType == GHContextmenuActionTypePanAndTap && self.prevIndex >= 0)) {
         CGPoint menuAtPoint = [self convertPoint:self.longPressLocation toView:gestureRecognizer.view];
@@ -210,6 +210,9 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
     self.isShowing = YES;
     [self animateMenu:YES];
     [self setNeedsDisplay];
+    if([self.delegate respondsToSelector:@selector(menuView:willShowAtPoint:)]) {
+        [self.delegate menuView:self willShowAtPoint:self.currentLocation];
+    }
 }
 
 - (void) hideMenu
@@ -223,6 +226,9 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
         self.isPanning = NO;
         [self animateMenu:NO];
         [self setNeedsDisplay];
+        if([self.delegate respondsToSelector:@selector(menuView:didDismissAtPoint:)]) {
+            [self.delegate menuView:self didDismissAtPoint:self.currentLocation];
+        }
         [CATransaction commit];
     }
 }
@@ -238,21 +244,21 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
     layer.shadowColor = [UIColor blackColor].CGColor;
     layer.shadowOffset = CGSizeMake(0, -1);
     layer.backgroundColor = (__bridge CGColorRef)self.itemBGColor;
-    
+
     CALayer* imageLayer = [CALayer layer];
     [imageLayer setContentsGravity:kCAGravityResizeAspect];
     imageLayer.contents = (id) image.CGImage;
     imageLayer.bounds = CGRectMake(0, 0, GHMenuItemSize*2/3, GHMenuItemSize*2/3);
     imageLayer.position = CGPointMake(GHMenuItemSize/2, GHMenuItemSize/2);
     [layer addSublayer:imageLayer];
-    
+
     return layer;
 }
 
 -(CALayer *)layerWithTitle:(NSString *)title
 {
     UIFont *font = [UIFont fontWithName:@"HelveticaNeue-Medium" size:14.0f];
-    
+
     CGSize boundingSize = [title boundingRectWithSize:CGSizeMake(FLT_MAX, FLT_MAX) options:NSStringDrawingUsesLineFragmentOrigin attributes:@{NSFontAttributeName: font} context:nil].size;
     CATextLayer *textLayer = [CATextLayer layer];
     textLayer.zPosition = 10.0f;
@@ -266,7 +272,7 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
     textLayer.string = title;
     textLayer.opacity = 0.0;
     textLayer.contentsScale = UIScreen.mainScreen.scale;
-    
+
     return textLayer;
 }
 
@@ -283,12 +289,12 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
 {
     [self.menuItems makeObjectsPerformSelector:@selector(removeFromSuperlayer)];
     [self.titleItems makeObjectsPerformSelector:@selector(removeFromSuperlayer)];
-    
+
     [self.menuItems removeAllObjects];
     [self.titleItems removeAllObjects];
     [self.titles removeAllObjects];
     [self.itemLocations removeAllObjects];
-    
+
     if (self.dataSource != nil) {
         NSInteger count = [self.dataSource numberOfMenuItemsForMenuView:self];
         for (int i = 0; i < count; i++) {
@@ -308,13 +314,13 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
 - (void) layoutMenuItems
 {
     [self.itemLocations removeAllObjects];
-    
+
     self.angleBetweenItems = M_PI / 5;
     self.arcAngle = MAX(self.menuItems.count - 1, 0) * _angleBetweenItems;
-    
+
     self.cachedStartAngle = self.currentStartAngle;
     NSLog(@"START ANGLE: %0.9f", self.cachedStartAngle);
-    
+
     for(int i = 0; i < self.menuItems.count; i++) {
         GHMenuItemLocation *location = [self locationForItemAtIndex:i];
         [self.itemLocations addObject:location];
@@ -323,48 +329,48 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
 
 -(CGPoint)normalizeTitleFrameFor:(CGRect)layerFrame relativeTo:(CGPoint)otherPoint
 {
-    
+
     CGSize size = self.bounds.size;
-    
+
     CGRect frame = CGRectZero;
     frame.size = layerFrame.size;
     frame.origin = CGPointMake(otherPoint.x - frame.size.width / 2, otherPoint.y - frame.size.height - 10 - GHMenuItemSize / 2);
     frame.origin.x = MAX(MIN(size.width - frame.size.width - 5, frame.origin.x), 5);
     frame.origin.y = MAX(MIN(size.height - frame.size.height - 5, frame.origin.y), 5);
-    
+
     return CGPointMake(CGRectGetMidX(frame), CGRectGetMidY(frame));
 }
 
 - (GHMenuItemLocation*) locationForItemAtIndex:(NSUInteger) index
 {
-    
+
 	CGFloat itemAngle = [self itemAngleAtIndex:index];
 	CGPoint itemCenter = CGPointMake(self.longPressLocation.x + cosf(itemAngle) * self.radius,
 									 self.longPressLocation.y + sinf(itemAngle) * self.radius);
-    
+
     GHMenuItemLocation *location = [GHMenuItemLocation new];
     location.position = itemCenter;
     location.angle = itemAngle;
-    
+
     return location;
 }
 
 -(CGFloat)currentStartAngle
 {
     CGFloat itemRadius = GHMenuItemSize / 2;
-    
+
     // We need to calculate the angle to the wall from each size.
-    
+
     CGFloat perItemArc = asinf(itemRadius / 2 / _radius);
     CGFloat width = self.bounds.size.width;
     CGPoint currentPoint = self.longPressLocation;
-    
+
     CGFloat centerX = width / 2;
-    
+
     CGFloat distanceFromEdge;
-    
+
     BOOL inverted = NO;
-    
+
     if(currentPoint.x < centerX) {
         // We need to calculate to the left wall.
         distanceFromEdge = MAX(currentPoint.x, itemRadius);
@@ -373,23 +379,23 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
         // We need to calculat to the right wall.
         distanceFromEdge = MAX(itemRadius, width - currentPoint.x);
     }
-    
+
     CGFloat adjacent = distanceFromEdge - itemRadius;
-    
+
     CGFloat angleUnderEdge = acosf(adjacent / _radius);
-    
+
     // Now, for the given point, we need to calculate the actual height...
-    
+
     CGFloat angleAdjustment = _arcAngle / 2;
     CGFloat ideal = -angleAdjustment;
-    
+
     CGFloat startAngle;
-    
+
     if(isnan(angleUnderEdge)) {
         startAngle = ideal;
         // If our menu is going to go over the top bounds of our app, we need to flip the start angle
         if (currentPoint.y - [self calculateRadius] <= 0) {
-            startAngle += DEGREES_TO_RADIANS(180);            
+            startAngle += DEGREES_TO_RADIANS(180);
         }
     } else if(inverted) {
         startAngle = MAX(-M_PI_2 + angleUnderEdge + perItemArc, ideal);
@@ -404,7 +410,7 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
             startAngle += DEGREES_TO_RADIANS(-90);
         }
     }
-    
+
     // Rotate it back 90 degrees, since 0 radians is basically a vector (1, 0)
     // And we want to treat it as (0, 1).
     return startAngle - M_PI_2;
@@ -412,9 +418,9 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
 
 - (CGFloat) itemAngleAtIndex:(NSUInteger) index
 {
-    
+
 	CGFloat itemAngle = _cachedStartAngle + (index * _angleBetweenItems);
-    
+
     if (itemAngle > 2 *M_PI) {
         itemAngle -= 2*M_PI;
     }else if (itemAngle < 0){
@@ -432,10 +438,10 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
     CGSize itemSize = CGSizeMake(GHMenuItemSize, GHMenuItemSize);
     CGFloat mainRadius = sqrt(pow(mainSize.width, 2) + pow(mainSize.height, 2)) / 2;
     CGFloat itemRadius = sqrt(pow(itemSize.width, 2) + pow(itemSize.height, 2)) / 2;
-    
+
     CGFloat minRadius = (CGFloat)(mainRadius + itemRadius);
     CGFloat maxRadius = ((itemRadius * self.menuItems.count) / self.arcAngle) * 1.5;
-    
+
 	CGFloat radius = MAX(minRadius, maxRadius);
 
     return radius;
@@ -445,7 +451,7 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
 {
     CGPoint originPoint = CGPointMake(endingPoint.x - startingPoint.x, endingPoint.y - startingPoint.y);
     float bearingRadians = atan2f(originPoint.y, originPoint.x);
-    
+
     bearingRadians = (bearingRadians > 0.0 ? bearingRadians : (M_PI*2 + bearingRadians));
 
     return bearingRadians;
@@ -456,7 +462,7 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
 -  (void) highlightMenuItemForPoint
 {
     if (self.isShowing && self.isPanning) {
-        
+
         CGFloat angle = [self angleBeweenStartinPoint:self.longPressLocation endingPoint:self.currentLocation];
         NSInteger closeToIndex = -1;
         for (int i = 0; i < self.menuItems.count; i++) {
@@ -466,45 +472,45 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
                 break;
             }
         }
-        
+
         if (closeToIndex >= 0 && closeToIndex < self.menuItems.count) {
-            
+
             GHMenuItemLocation* itemLocation = [self.itemLocations objectAtIndex:closeToIndex];
 
             CGFloat distanceFromCenter = sqrt(pow(self.currentLocation.x - self.longPressLocation.x, 2)+ pow(self.currentLocation.y-self.longPressLocation.y, 2));
-            
+
             CGFloat toleranceDistance = (self.radius - GHMainItemSize/(2*sqrt(2)) - GHMenuItemSize/(2*sqrt(2)) )/2;
-            
+
             CGFloat distanceFromItem = fabsf(distanceFromCenter - self.radius) - GHMenuItemSize/(2*sqrt(2)) ;
-            
+
             if (fabs(distanceFromItem) < toleranceDistance ) {
                 CALayer *layer = [self.menuItems objectAtIndex:closeToIndex];
                 CALayer *textLayer = [self.titleItems objectAtIndex:closeToIndex];
                 layer.backgroundColor = (__bridge CGColorRef)(self.itemBGHighlightedColor);
-                
+
                 CGFloat distanceFromItemBorder = fabs(distanceFromItem);
-                
+
                 CGFloat scaleFactor = 1 + 0.5 * (1 - distanceFromItemBorder / toleranceDistance);
                 scaleFactor = MAX(scaleFactor, 1.0);
-                
+
                 // Scale
                 CATransform3D scaleTransForm =  CATransform3DScale(CATransform3DIdentity, scaleFactor, scaleFactor, 1.0);
-                
+
                 CGFloat xtrans = cosf(itemLocation.angle);
                 CGFloat ytrans = sinf(itemLocation.angle);
-                
+
                 CATransform3D transLate = CATransform3DTranslate(scaleTransForm, 10*scaleFactor*xtrans, 10*scaleFactor*ytrans, 0);
                 layer.transform = transLate;
 
                 textLayer.transform = CATransform3DTranslate(CATransform3DIdentity, 0, 20 * ytrans * scaleFactor, 0);
                 textLayer.opacity = 1.0f;
-                
+
                 if ( ( self.prevIndex >= 0 && self.prevIndex != closeToIndex)) {
                     [self resetPreviousSelection];
                 }
-                
+
                 self.prevIndex = closeToIndex;
-                
+
             } else if(self.prevIndex >= 0) {
                 [self resetPreviousSelection];
             }
@@ -534,24 +540,24 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
     if (isShowing) {
         [self layoutMenuItems];
     }
-    
+
     CAMediaTimingFunction *timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.45f :1.2f :0.75f :1.0f];
 
     CGColorRef visibleColour = [UIColor colorWithWhite:0.1f alpha:.8f].CGColor;
     CGColorRef hiddenColour  = UIColor.clearColor.CGColor;
     self.layer.backgroundColor = (isShowing ?  visibleColour : hiddenColour);
-    
+
     [_menuItems enumerateObjectsUsingBlock:^(CALayer *layer, NSUInteger index, BOOL *stop) {
         layer.opacity = 0;
         CGPoint fromPosition = self.longPressLocation;
-        
+
         GHMenuItemLocation* location = [self.itemLocations objectAtIndex:index];
         CGPoint toPosition = location.position;
-        
+
         double delayInSeconds = index * GHAnimationDelay;
-        
+
         CABasicAnimation *positionAnimation;
-        
+
         positionAnimation = [CABasicAnimation animationWithKeyPath:@"position"];
         positionAnimation.fromValue = [NSValue valueWithCGPoint:isShowing ? fromPosition : toPosition];
         positionAnimation.toValue = [NSValue valueWithCGPoint:isShowing ? toPosition : fromPosition];
@@ -560,7 +566,7 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
         positionAnimation.beginTime = [layer convertTime:CACurrentMediaTime() fromLayer:nil] + delayInSeconds;
         [positionAnimation setValue:[NSNumber numberWithUnsignedInteger:index] forKey:isShowing ? GHShowAnimationID : GHDismissAnimationID];
         positionAnimation.delegate = self;
-        
+
         [layer addAnimation:positionAnimation forKey:@"riseAnimation"];
     }];
 }
@@ -571,15 +577,15 @@ CGFloat const   GHAnimationDelay = GHAnimationDuration/5;
         NSUInteger index = [[anim valueForKey:GHShowAnimationID] unsignedIntegerValue];
         CALayer *layer = self.menuItems[index];
         CALayer *titleLayer = self.titleItems[index];
-        
+
         GHMenuItemLocation* location = [self.itemLocations objectAtIndex:index];
         CGFloat toAlpha = 1.0;
-        
+
         layer.position = location.position;
         titleLayer.position = [self normalizeTitleFrameFor:titleLayer.frame relativeTo:location.position];
         layer.opacity = toAlpha;
         titleLayer.opacity = 0.0f;
-        
+
     }
     else if([anim valueForKey:GHDismissAnimationID]) {
         NSUInteger index = [[anim valueForKey:GHDismissAnimationID] unsignedIntegerValue];
